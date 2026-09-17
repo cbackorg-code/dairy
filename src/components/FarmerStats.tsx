@@ -33,6 +33,28 @@ import { useTranslation } from '@/i18n/useTranslation';
 export default function FarmerStats({ stats, cycle, onCycleChange, onClickBill, language }: FarmerStatsProps) {
   const { t } = useTranslation(language);
   const { totalPayout, totalMilk, averageRate, amShifts, pmShifts, avgFat, avgWater } = stats;
+
+  // Compute dynamic cycle progress
+  const now = new Date();
+  const dayOfMonth = now.getDate();
+  const monthName = now.toLocaleString(language === 'TE' ? 'te-IN' : 'en-US', { month: 'short' });
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+  // How many days have elapsed in the selected half
+  let daysElapsed: number;
+  let totalDaysInHalf: number;
+  let isCycleClosed: boolean;
+  if (cycle === 'H1') {
+    totalDaysInHalf = 15;
+    daysElapsed = dayOfMonth <= 15 ? dayOfMonth : 15;
+    isCycleClosed = dayOfMonth > 15;
+  } else {
+    totalDaysInHalf = daysInMonth - 15;
+    daysElapsed = dayOfMonth > 15 ? dayOfMonth - 15 : totalDaysInHalf;
+    isCycleClosed = dayOfMonth <= 15; // H2 of previous context is closed if we're now in H1
+  }
+
+  const calculatedDateStr = `${dayOfMonth} ${monthName}`;
   return (
     <div className="w-full flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-2">
       
@@ -51,10 +73,10 @@ export default function FarmerStats({ stats, cycle, onCycleChange, onClickBill, 
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <span className="inline-flex items-center gap-1 bg-surface-container-lowest text-on-surface border-2 border-outline px-2.5 py-0.5 rounded-full font-label-sm text-label-sm shrink-0">
               <span className="material-symbols-outlined text-primary text-[15px]">verified</span>
-              {t('stats.days_complete')}
+              {daysElapsed} {language === 'TE' ? 'రోజులు పూర్తయ్యాయి' : `Day${daysElapsed !== 1 ? 's' : ''} Complete`}
             </span>
             <span className="font-label-sm text-label-sm opacity-90 whitespace-nowrap">
-              {t('stats.calculated')}
+              {language === 'TE' ? 'లెక్కించబడింది' : 'Calculated'}: {calculatedDateStr}
             </span>
           </div>
 
@@ -91,7 +113,7 @@ export default function FarmerStats({ stats, cycle, onCycleChange, onClickBill, 
             </div>
             <div className="text-right">
               <span className="inline-block bg-on-primary-container text-primary font-headline-sm text-label-sm px-2.5 py-1 rounded-lg border border-outline">
-                {t('stats.cycle_closed')}
+                {isCycleClosed ? t('stats.cycle_closed') : (language === 'TE' ? 'ప్రగతిలో ఉంది' : 'In Progress')}
               </span>
             </div>
           </div>

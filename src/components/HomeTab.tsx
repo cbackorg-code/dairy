@@ -9,6 +9,10 @@ interface HomeTabProps {
   onClickBill: () => void;
   stats: any;
   feed: any[];
+  allFeed: any[];
+  isLoading?: boolean;
+  monthLabel?: string;
+  daysInMonth?: number;
 }
 
 export default function HomeTab({ 
@@ -17,7 +21,11 @@ export default function HomeTab({
   setCycle, 
   onClickBill,
   stats,
-  feed
+  feed,
+  allFeed,
+  isLoading,
+  monthLabel = 'Oct',
+  daysInMonth = 31
 }: HomeTabProps) {
   const { t } = useTranslation(language);
 
@@ -37,7 +45,7 @@ export default function HomeTab({
             className={`${cycle === 'H1' ? 'bg-primary-container text-on-primary' : 'bg-surface-bright text-on-surface hover:bg-surface-container'} border-2 border-outline rounded-xl p-2.5 text-left tactile-shadow active:translate-y-0.5 transition-transform`}
           >
             <div className="flex items-center justify-between mb-0.5">
-              <span className="font-headline-sm text-label-md">1 – 15 Oct</span>
+              <span className="font-headline-sm text-label-md">1 – 15 {monthLabel}</span>
               {cycle === 'H1' ? (
                 <span className="material-symbols-outlined text-[16px]" data-weight="fill">check_circle</span>
               ) : (
@@ -51,7 +59,7 @@ export default function HomeTab({
             className={`${cycle === 'H2' ? 'bg-primary-container text-on-primary' : 'bg-surface-bright text-on-surface hover:bg-surface-container'} border-2 border-outline rounded-xl p-2.5 text-left tactile-shadow active:translate-y-0.5 transition-transform`}
           >
             <div className="flex items-center justify-between mb-0.5">
-              <span className="font-headline-sm text-label-md">16 – 31 Oct</span>
+              <span className="font-headline-sm text-label-md">16 – {daysInMonth} {monthLabel}</span>
               {cycle === 'H2' ? (
                 <span className="material-symbols-outlined text-[16px]" data-weight="fill">check_circle</span>
               ) : (
@@ -68,7 +76,32 @@ export default function HomeTab({
         <section className="mt-8 space-y-4">
           <h2 className="font-headline-lg-mobile text-headline-lg-mobile text-on-surface px-1">{t('home.recent_receipts')}</h2>
           <div className="flex flex-col gap-4">
-            {feed.slice(0, 5).map((slip, idx) => (
+            {isLoading && allFeed.length === 0 ? (
+              /* Skeleton loading placeholders */
+              Array.from({ length: 2 }).map((_, idx) => (
+                <div key={idx} className="bg-surface-container-lowest border-2 border-outline rounded-xl overflow-hidden tactile-shadow animate-pulse">
+                  <div className="bg-secondary/30 px-3.5 py-2 flex items-center justify-between border-b-2 border-outline">
+                    <div className="h-4 w-32 bg-outline/20 rounded"></div>
+                    <div className="h-4 w-16 bg-outline/20 rounded"></div>
+                  </div>
+                  <div className="grid grid-cols-4 divide-x-2 divide-outline border-b-2 border-outline bg-surface-bright text-center">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="py-2.5 px-1">
+                        <div className="h-3 w-10 bg-outline/20 rounded mx-auto mb-1"></div>
+                        <div className="h-5 w-12 bg-outline/20 rounded mx-auto"></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            ) : allFeed.length === 0 ? (
+              <div className="text-center py-10 bg-surface-container-lowest border-2 border-outline rounded-xl tactile-shadow">
+                <span className="material-symbols-outlined text-[40px] text-on-surface-variant mb-2 block">receipt_long</span>
+                <p className="font-headline-sm text-on-surface-variant">{t('home.no_receipts') || 'No receipts yet'}</p>
+                <p className="font-body-sm text-on-surface-variant mt-1">{t('home.scan_first') || 'Scan your first receipt to get started'}</p>
+              </div>
+            ) : (
+              allFeed.slice(0, 5).map((slip, idx) => (
               <div key={idx} className="bg-surface-container-lowest border-2 border-outline rounded-xl overflow-hidden tactile-shadow">
                 <div className="bg-secondary px-3.5 py-2 flex items-center justify-between text-on-secondary border-b-2 border-outline">
                   <span className="font-headline-sm text-label-md flex items-center gap-1.5">
@@ -96,7 +129,8 @@ export default function HomeTab({
                   </div>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </section>
       </div>

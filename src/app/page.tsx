@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from '@/i18n/useTranslation';
 import { User } from '@/types';
-import { MOCK_STATS, MOCK_FEED, MOCK_CYCLES } from '@/data/mockData';
 
 import LoginScreen from '@/components/LoginScreen';
 import Header from '@/components/Header';
@@ -21,9 +20,68 @@ export default function Home() {
   const [selectedCycleId, setSelectedCycleId] = useState<number | null>(null);
   const [cycleFilter, setCycleFilter] = useState<'all' | 'completed' | 'current'>('all');
 
-  const [dashboardData, setDashboardData] = useState<{stats: any, feed: any[], cycles: any[]}>({
-    stats: MOCK_STATS, feed: [], cycles: []
-  });
+  const EMPTY_STATS = { totalPayout: 0, totalMilk: 0, averageRate: 0, amShifts: 0, pmShifts: 0, avgFat: 0, avgWater: 0 };
+
+  // Try loading cached dashboard data from localStorage for instant display
+  const getInitialDashboardData = () => {
+    if (typeof window === 'undefined') return { stats: EMPTY_STATS, feed: [], cycles: [] };
+    try {
+      const cached = localStorage.getItem('dairybill_dashboard_cache');
+      if (cached) return JSON.parse(cached);
+    } catch { /* ignore parse errors */ }
+    return { stats: EMPTY_STATS, feed: [], cycles: [] };
+  };
+
+  const [dashboardData, setDashboardData] = useState<{stats: any, feed: any[], cycles: any[]}>(getInitialDashboardData);
+  const [isDashboardLoading, setIsDashboardLoading] = useState(false);
+
+  // Filter feed and recompute stats based on selected cycle half
+  const { cycleStats, cycleFeed, cycleMonthLabel, cycleDaysInMonth } = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed
+    const monthName = now.toLocaleString('en-US', { month: 'short' });
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    // Filter feed items that belong to the selected cycle
+    const filtered = dashboardData.feed.filter((item: any) => {
+      if (!item.date) return false;
+      try {
+        const d = new Date(item.date);
+        if (d.getFullYear() !== currentYear || d.getMonth() !== currentMonth) return false;
+        const day = d.getDate();
+        return cycle === 'H1' ? day <= 15 : day > 15;
+      } catch {
+        return false;
+      }
+    });
+
+    // Recompute stats from filtered feed
+    let totalPayout = 0, totalMilk = 0, rateSum = 0, rateCount = 0;
+    let amShifts = 0, pmShifts = 0, fatSum = 0, fatCount = 0;
+
+    for (const item of filtered) {
+      totalPayout += item.amount || 0;
+      totalMilk += item.liters || 0;
+      if (item.fat) { fatSum += item.fat; fatCount++; }
+      // Estimate rate from amount/liters if not provided
+      if (item.liters > 0) { rateSum += (item.amount || 0) / item.liters; rateCount++; }
+      if (item.shift === 'AM' || item.shift === 'Morning Shift') amShifts++;
+      else pmShifts++;
+    }
+
+    const stats = {
+      totalPayout,
+      totalMilk,
+      averageRate: rateCount > 0 ? rateSum / rateCount : 0,
+      amShifts,
+      pmShifts,
+      avgFat: fatCount > 0 ? fatSum / fatCount : 0,
+      avgWater: 0,
+    };
+
+    return { cycleStats: stats, cycleFeed: filtered, cycleMonthLabel: monthName, cycleDaysInMonth: daysInMonth };
+  }, [dashboardData.feed, cycle]);
 
   const filteredCycles = dashboardData.cycles.filter(c => cycleFilter === 'all' || c.status === cycleFilter);
   const [user, setUser] = useState<User | null>(null);
@@ -38,19 +96,26 @@ export default function Home() {
 
   const showToast = (msg: string) => setToastMessage(msg);
 
-  // Fetch dashboard data
-  const fetchDashboardData = async (userId: string) => {
+  // Fetch dashboard data from API and cache the result
+  const fetchDashboardData = useCallback(async (userId: string) => {
+    setIsDashboardLoading(true);
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
       const res = await fetch(`${baseUrl}/api/receipts/dashboard?user_id=${userId}`);
       if (res.ok) {
         const data = await res.json();
         setDashboardData(data);
+        // Cache fresh data so next app open is instant
+        try {
+          localStorage.setItem('dairybill_dashboard_cache', JSON.stringify(data));
+        } catch { /* storage full – ignore */ }
       }
     } catch (err) {
       console.error("Failed to fetch dashboard data:", err);
+    } finally {
+      setIsDashboardLoading(false);
     }
-  };
+  }, []);
 
   // Load user from local storage on mount
   useEffect(() => {
@@ -121,6 +186,8 @@ export default function Home() {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('dairybill_user');
+    localStorage.removeItem('dairybill_dashboard_cache');
+    setDashboardData({ stats: EMPTY_STATS, feed: [], cycles: [] });
     setCurrentTab('home');
   };
 
@@ -198,8 +265,12 @@ export default function Home() {
             cycle={cycle}
             setCycle={setCycle}
             onClickBill={() => { setCurrentTab('records'); setSelectedCycleId(1); }}
-            stats={dashboardData.stats}
-            feed={dashboardData.feed}
+            stats={cycleStats}
+            feed={cycleFeed}
+            allFeed={dashboardData.feed}
+            isLoading={isDashboardLoading}
+            monthLabel={cycleMonthLabel}
+            daysInMonth={cycleDaysInMonth}
           />
         )}
 
@@ -211,8 +282,9 @@ export default function Home() {
             selectedCycleId={selectedCycleId}
             setSelectedCycleId={setSelectedCycleId}
             filteredCycles={filteredCycles}
-            MOCK_CYCLES={dashboardData.cycles}
-            MOCK_FEED={dashboardData.feed}
+            cycles={dashboardData.cycles}
+            feed={dashboardData.feed}
+            isLoading={isDashboardLoading}
           />
         )}
 

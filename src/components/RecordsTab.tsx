@@ -8,8 +8,9 @@ interface RecordsTabProps {
   selectedCycleId: number | null;
   setSelectedCycleId: (id: number | null) => void;
   filteredCycles: any[];
-  MOCK_CYCLES: any[];
-  MOCK_FEED: any[];
+  cycles: any[];
+  feed: any[];
+  isLoading?: boolean;
 }
 
 export default function RecordsTab({
@@ -19,10 +20,18 @@ export default function RecordsTab({
   selectedCycleId,
   setSelectedCycleId,
   filteredCycles,
-  MOCK_CYCLES,
-  MOCK_FEED
+  cycles,
+  feed,
+  isLoading
 }: RecordsTabProps) {
   const { t } = useTranslation(language);
+
+  // Compute summary totals from actual data
+  const totalQuantity = cycles.reduce((sum: number, c: any) => sum + (c.milk || 0), 0);
+  const totalBill = cycles.reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
+  const avgFat = cycles.length > 0
+    ? cycles.reduce((sum: number, c: any) => sum + (c.fat || 0), 0) / cycles.length
+    : 0;
 
   return (
     <div className="w-full">
@@ -49,15 +58,15 @@ export default function RecordsTab({
             <div className="bg-surface-container-lowest text-on-surface border-2 border-outline rounded-xl p-3 my-2 grid grid-cols-3 divide-x-2 divide-outline">
               <div className="text-center px-1">
                 <span className="block font-label-sm text-label-sm text-on-surface-variant">{t('records.cycles')}</span>
-                <span className="block font-headline-md text-headline-md text-on-surface mt-0.5">{MOCK_CYCLES.length}</span>
+                <span className="block font-headline-md text-headline-md text-on-surface mt-0.5">{cycles.length}</span>
               </div>
               <div className="text-center px-1">
                 <span className="block font-label-sm text-label-sm text-on-surface-variant">{t('records.quantity')}</span>
-                <span className="block font-headline-md text-headline-md text-on-surface mt-0.5">578.3 L</span>
+                <span className="block font-headline-md text-headline-md text-on-surface mt-0.5">{totalQuantity > 0 ? `${totalQuantity.toFixed(1)} L` : '—'}</span>
               </div>
               <div className="text-center px-1">
                 <span className="block font-label-sm text-label-sm text-primary">{t('records.total_bill')}</span>
-                <span className="block font-headline-md text-headline-md text-primary mt-0.5">₹20,460</span>
+                <span className="block font-headline-md text-headline-md text-primary mt-0.5">{totalBill > 0 ? `₹${totalBill.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'}</span>
               </div>
             </div>
             <div className="flex items-center justify-between pt-1 px-1">
@@ -109,7 +118,7 @@ export default function RecordsTab({
                   <div className={`${c.status === 'completed' ? 'bg-secondary text-on-secondary' : 'bg-surface-variant text-on-surface'} px-space-md py-2.5 flex justify-between items-center border-b-2 border-outline`}>
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined text-[20px]">event_note</span>
-                      <span className="font-label-lg text-label-lg">{t('records.cycle')} {c.name}</span>
+                      <span className="font-label-lg text-label-lg">{t('records.cycle')} {c.name === 'Current Cycle' && language === 'TE' ? 'ప్రస్తుత విడత' : c.name}</span>
                     </div>
                     <span className={`${c.status === 'completed' ? 'bg-surface-container-lowest text-on-surface' : 'bg-surface text-on-surface'} font-label-sm text-label-sm px-2 py-0.5 rounded border border-outline`}>
                       {c.type}
@@ -167,12 +176,12 @@ export default function RecordsTab({
           <div className="bg-surface-container-high border-2 border-outline rounded-xl p-4 tactile-shadow mb-4">
             <h2 className="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
               <span className="material-symbols-outlined text-[24px]">receipt_long</span>
-              {MOCK_CYCLES.find(c => c.id === selectedCycleId)?.name} {t('records.receipts_title')}
+              {(cycles.find(c => c.id === selectedCycleId)?.name === 'Current Cycle' && language === 'TE' ? 'ప్రస్తుత విడత' : cycles.find(c => c.id === selectedCycleId)?.name)} {t('records.receipts_title')}
             </h2>
           </div>
 
           <div className="flex flex-col gap-4">
-            {MOCK_FEED.map((slip, idx) => (
+            {feed.map((slip, idx) => (
               <div key={idx} className="bg-surface-container-lowest border-2 border-outline rounded-xl overflow-hidden tactile-shadow">
                 <div className="bg-secondary px-3.5 py-2 flex items-center justify-between text-on-secondary border-b-2 border-outline">
                   <span className="font-headline-sm text-label-md flex items-center gap-1.5">

@@ -72,7 +72,6 @@
     "cycles": "Cycles",
     "quantity": "Quantity",
     "total_bill": "Total Bill",
-    "avg_fat": "Average Fat: 7.5% FAT",
     "cumulative": "Cumulative",
     "billing_cycles": "Billing Cycles",
     "every_15_days": "Every 15 Days",
@@ -82,6 +81,8 @@
     "cycle": "Cycle:",
     "calculated_bill": "CALCULATED BILL",
     "poured_milk": "Poured Milk",
+    "avg_fat": "Average Fat",
+    "avg_rate": "Avg Rate",
     "view_receipts": "View Receipts",
     "no_cycles": "No cycles found",
     "back": "Back to Billing Cycles",
@@ -92,6 +93,8 @@
     "mobile": "Mobile",
     "society_name": "Society Name",
     "no_society_set": "No Society Set",
+    "share_app": "Share App",
+    "share_text": "Track your milk records easily with DairyTrack! Join now:",
     "sign_out": "Sign Out"
   }
 }
